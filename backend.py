@@ -1,9 +1,7 @@
 from datetime import datetime
-import frontend
 
 '''
-not sure which function to implement 
-search/sort algo in
+not sure which function to implement search/sort algo in
 '''
 
 class Flashcard:
@@ -21,9 +19,9 @@ class Flashcard:
         self.rating = rating
 
 class Deck:
-    def __init__(self, name: str, description: str):
+    def __init__(self, name: str, speed):
         self.name = name
-        self.description = description
+        self.speed = speed
         self.date_created = datetime.now()
         self.date_reviewed = None
 
@@ -32,7 +30,6 @@ class Deck:
 
         self.cards_today = 0
         self.score = 0
-        pass
 
     def add_card(self, front: str, back: str):
         card = Flashcard(front, back)
