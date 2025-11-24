@@ -31,8 +31,7 @@ class Deck:
         self.cards_today = 0
         self.score = 0
 
-    def add_card(self, front: str, back: str):
-        card = Flashcard(front, back)
+    def add_card(self, card):
         self.cards.append(card)
 
     def schedule_card(self, card: Flashcard):
