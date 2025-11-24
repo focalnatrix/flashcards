@@ -24,7 +24,7 @@ class FlashcardApp:
         self.main_frame.pack(fill="both", expand=True)
 
         # Text here should be some welcoming text or whatever
-        ttk.Label(self.main_frame, text="Welcome to our app!!!!!", 
+        ttk.Label(self.main_frame, text="Welcome to Memokado!", 
                   font=("Arial", 16, "bold")).pack(padx=10, pady=10)
 
         self.decks_container = ttk.Frame(self.main_frame)
@@ -50,9 +50,7 @@ class FlashcardApp:
 
         main_frame.columnconfigure(0, weight=1)
 
-        '''
-        Allows user to input deck name
-        '''
+        # Allows user to input deck name
         ttk.Label(main_frame, text="Deck Name", font=("Arial", 14, "bold")).grid(
             row=0, column=0, sticky=tk.W ,padx=(0,5), pady=(0,5))
 
@@ -60,9 +58,7 @@ class FlashcardApp:
         self.name_entry.grid(row=1, column=0, sticky=tk.W, pady=(0,15))
         self.name_entry.focus_set()
 
-        '''
-        Create deck
-        '''
+        # Create deck
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=2, column=0, columnspan=2)
 
@@ -78,22 +74,13 @@ class FlashcardApp:
         try:
             new_deck = backend.Deck(deck_name)
             self.decks.append(new_deck)
+            self.show_decks(self.decks_container)
 
             self.create_deck_window.destroy()
 
             if self.no_decks_label:
                 self.no_decks_label.destroy()
                 self.no_decks_label = None
-
-            if len(self.decks) >= 1:
-                ttk.Label(self.deck_rows_frame, text="Deck Name", font=("Arial", 13, "bold")).grid(
-                    row=0, column=0, padx=5, pady=3, sticky="w")
-                ttk.Label(self.deck_rows_frame, text="Cards", font=("Arial", 13, "bold")).grid(
-                    row=0, column=1, padx=5, pady=3)
-                ttk.Label(self.deck_rows_frame, text="Score", font=("Arial", 13, "bold")).grid(
-                    row=0, column=2, padx=5, pady=3)
-                ttk.Label(self.deck_rows_frame, text="Actions", font=("Arial", 13, "bold")).grid(
-                    row=0, column=3, padx=5, pady=3)
             
             row_index = len(self.decks)
             self._add_deck_to_table(new_deck, row_index)
@@ -102,24 +89,31 @@ class FlashcardApp:
             messagebox.showerror("Error", f"Failed to create deck: {str(e)}") 
 
     def show_decks(self, parent_frame):
+        for widget in parent_frame.winfo_children():
+            widget.destroy()
+
         wrapper = ttk.Frame(parent_frame)
         wrapper.pack(pady=2)
         wrapper.pack(anchor="center")
 
         self.deck_rows_frame = ttk.Frame(wrapper)
-        self.deck_rows_frame.pack(anchor="w")
-
-        self.no_decks_label = None
+        self.deck_rows_frame.pack(anchor="center")
 
         if not self.decks:
             self.no_decks_label = ttk.Label(
                 self.deck_rows_frame, 
                 text="No decks available. Create a new deck to get started!", 
                 foreground="gray", anchor="center"
-                )
-            self.no_decks_label.grid(row=1, column=0, columnspan=2, pady=10)
+            )
+            self.no_decks_label.grid(row=0, column=0, columnspan=4, pady=10)
             return
-                
+
+        headings = ["Deck Name", "Cards", "Last Score", "Actions"]
+        for col, text in enumerate(headings):
+            ttk.Label(self.deck_rows_frame, text=text, font=("Arial", 13, "bold")).grid(
+                row=0, column=col, padx=5, pady=3
+            )
+
         for i, deck in enumerate(self.decks):
             self._add_deck_to_table(deck, i + 1)
 
@@ -129,13 +123,14 @@ class FlashcardApp:
                 row=row_index, column=0, padx=5, pady=2, sticky="w")
         
         # Shows number of cards in the deck
-        card_count = ttk.Label(self.deck_rows_frame, text=len(deck.cards))
-        card_count.grid(row=row_index, column=1, padx=5, pady=2)
-        deck._card_count = card_count
+        cards_label = ttk.Label(self.deck_rows_frame, text=len(deck.cards))
+        cards_label.grid(row=row_index, column=1, padx=5, pady=2)
+        deck._card_count = cards_label
 
         # Shows the deck's previous score
-        prev_score = ttk.Label(self.deck_rows_frame, text=deck.score)
-        prev_score.grid(row=row_index, column=2, padx=5, pady=2)
+        score_label = ttk.Label(self.deck_rows_frame, text=f"{deck.score} / {deck.max_score()}")
+        score_label.grid(row=row_index, column=2, padx=5, pady=2)
+        deck._score_label = score_label
     
         # Shows action buttons
         button_frame = ttk.Frame(self.deck_rows_frame)
@@ -259,7 +254,6 @@ class FlashcardApp:
 
         self.show_card_front()
 
-
     def show_card_front(self):
         if self.study_cards_index >= len(self.study_cards):
             return
@@ -274,7 +268,6 @@ class FlashcardApp:
 
         self.card_answer.config(text="")
         self.showing_front = True
-
 
     def show_card_back(self):
         if self.study_cards_index >= len(self.study_cards):
@@ -292,7 +285,6 @@ class FlashcardApp:
 
         self.showing_front = False
 
-
     def rate_card(self, rating):
         if self.study_cards_index >= len(self.study_cards):
             return
@@ -308,30 +300,111 @@ class FlashcardApp:
         else:
             self.finish_study()
 
-
     def finish_study(self):
         self.card_answer.pack_forget()
         self.rating_frame.pack_forget()
-        self.show_answer_button.pack_forget()
 
         self.card_text.config(text="Congratulations!")
-        self.card_answer.config(text=f"Your score for this deck is {self.current_deck.score}!")
+        self.card_answer.config(text=f"Score: {self.current_deck.score}")
         self.card_answer.pack(pady=10)
+
+        if hasattr(self.current_deck, "_score_label"):
+            self.current_deck._score_label.config(
+                text=f"{self.current_deck.score} / {self.current_deck.max_score()}"
+            )
 
         self.showing_front = False
 
     def edit_deck(self, deck):
-        # TODO
-        '''
-        Two sections
-        1. Edit deck details (name, speed)
-        2. View/Add/Edit/Delete cards in the deck
-        '''
-        pass
+        self.edit_deck_window = tk.Toplevel(self.main_window)
+        self.edit_deck_window.title(f"Editing {deck.name}")
+        self.edit_deck_window.withdraw()
+        self.center_window(self.edit_deck_window, 650, 550)
+        self.edit_deck_window.deiconify()
+
+        main_frame = ttk.Frame(self.edit_deck_window, padding=20)
+        main_frame.pack(anchor="center")
+        self.edit_deck_window.grid_rowconfigure(0, weight=1)
+        self.edit_deck_window.grid_columnconfigure(0, weight=1)
+
+        deck_frame = ttk.Frame(main_frame, padding=15)
+        deck_frame.grid(row=0, column=0, pady=(0, 20))
+        deck_frame.grid_columnconfigure(0, weight=1)
+
+        ttk.Label(deck_frame, text="Deck Details", font=("Arial", 16, "bold")).grid(
+            row=0, column=0, pady=10, sticky="n")
+
+        ttk.Label(deck_frame, text="Deck Name", font=("Arial", 14, "bold")).grid(
+            row=1, column=0, pady=5, sticky="w")
+        name_entry = ttk.Entry(deck_frame, width=40)
+        name_entry.insert(0, deck.name)
+        name_entry.grid(row=2, column=0, pady=5, sticky="w")
+
+        def save_deck_name():
+            new_name = name_entry.get().strip()
+            if not new_name:
+                messagebox.showerror("Error", "Deck name cannot be empty!")
+                return
+            deck.name = new_name
+            messagebox.showinfo("Success", f"Deck renamed to '{deck.name}'")
+            self.edit_deck_window.destroy()
+
+            for widget in self.deck_rows_frame.winfo_children():
+                widget.destroy()
+
+            self.show_decks(self.decks_container)
+
+        ttk.Button(deck_frame, text="Save Deck Name", command=save_deck_name).grid(
+            row=3, column=0, pady=10, sticky="n")
+
+        cards_frame = ttk.Frame(main_frame, padding=10)
+        cards_frame.grid(row=1, column=0, sticky="nsew")
+        cards_frame.grid_columnconfigure(0, weight=3)
+        cards_frame.grid_columnconfigure(1, weight=3)
+        cards_frame.grid_columnconfigure(2, weight=1)
+
+        ttk.Label(cards_frame, text="Card Front", font=("Arial", 13, "bold")).grid(
+            row=0, column=0, padx=5, pady=5, sticky="w")
+        ttk.Label(cards_frame, text="Card Back", font=("Arial", 13, "bold")).grid(
+            row=0, column=1, padx=5, pady=5, sticky="w")
+
+        for i, card in enumerate(deck.cards):
+            ttk.Label(cards_frame, text=f"{card.front}", anchor="w", 
+                      wraplength=250, justify="left").grid(
+                row=i+1, column=0, padx=5, pady=1, sticky="w")
+            
+            ttk.Label(cards_frame, text=f"{card.back}", anchor="w", 
+                      wraplength=250, justify="left").grid(
+                row=i+1, column=1, padx=5, pady=1, sticky="w")
+            
+            btn_frame = ttk.Frame(cards_frame)
+            btn_frame.grid(row=i+1, column=2, padx=5, pady=5, sticky="w")
+            ttk.Button(btn_frame, text="Delete", command=lambda c=card: self.delete_card(deck, c, cards_frame)).pack(side="left", padx=2)
 
     def delete_deck(self, deck):
-        # TODO
-        pass  
+        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the deck '{deck.name}'?")
+        if not confirm:
+            return
+        
+        if deck in self.decks:
+            self.decks.remove(deck)
+
+        for widget in self.deck_rows_frame.winfo_children():
+            widget.destroy()
+        self.show_decks(self.decks_container)
+
+    def delete_card(self, deck, card, parent_frame):
+        confirm = messagebox.askyesno("Confirm Delete", "Delete this card?")
+        if not confirm:
+            return
+        
+        if deck.remove_card(card.id):
+            if hasattr(deck, "_card_count"):
+                deck._card_count.config(text=str(len(deck.cards)))
+            
+            for widget in parent_frame.winfo_children():
+                widget.destroy()
+            self.edit_deck(deck)
 
     def center_window(self, window, width=None, height=None):
         window.update_idletasks()
@@ -339,6 +412,7 @@ class FlashcardApp:
         h = height if height else window.winfo_height()
         ws = window.winfo_screenwidth()
         hs = window.winfo_screenheight()
+        
         x = (ws // 2) - (w // 2)
         y = (hs // 2) - (h // 2)
         window.geometry(f'{w}x{h}+{x}+{y}')

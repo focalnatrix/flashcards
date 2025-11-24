@@ -2,10 +2,6 @@ import json
 import uuid
 import os
 
-
-# ======================================================
-# FLASHCARD CLASS
-# ======================================================
 class Flashcard:
     """
     Represents a single flashcard.
@@ -15,69 +11,47 @@ class Flashcard:
     """
 
     def __init__(self, front, back, card_id=None, created_at=None):
-        self.id = card_id or str(uuid.uuid4())  # unique ID
+        self.id = card_id or str(uuid.uuid4()) 
         self.front = front
         self.back = back
-        self.repetitions = 0      # number of consecutive successful reviews
-        self.interval = 1         # review interval (logical, not date-based)
-        self.ease_factor = 2.5    # SM-2 ease factor
+        self.repetitions = 0      
+        self.interval = 1         
+        self.ease_factor = 2.5    
         self.created_at = created_at or uuid.uuid4().int
+        self.last_score = 0
 
     def apply_rating(self, rating):
-        """
-        Ratings:
-            0 = Again
-            1 = Hard
-            2 = Easy
-        """
+        self.last_score = rating
 
-        if rating == 0:  # Forgot
-            self.repetitions = 0
-            self.interval = 1
-            self.ease_factor = max(1.3, self.ease_factor - 0.2)
-        elif rating == 1:  # Hard
-            self.repetitions += 1
-            self.interval = max(1, int(self.interval * 1.2))
-            self.ease_factor = max(1.3, self.ease_factor - 0.05)
-        elif rating == 2:  # Easy
-            self.repetitions += 1
-            if self.repetitions == 1:
+        match rating:
+            case "0":
+                self.repetitions = 0
                 self.interval = 1
-            elif self.repetitions == 2:
-                self.interval = 3
-            else:
-                self.interval = int(self.interval * self.ease_factor)
-            self.ease_factor = min(2.5, self.ease_factor + 0.1)
+                self.ease_factor = max(1.3, self.ease_factor - 0.2)
+            case "1":
+                self.repetitions += 1
+                self.interval = max(1, int(self.interval * 1.2))
+                self.ease_factor = max(1.3, self.ease_factor - 0.05)
+            case "2":
+                self.repetitions += 1
+                match self.repetitions:
+                    case "1":
+                        self.interval = 1
+                    case "2":
+                        self.interval = 3
+                    case _:
+                        self.interval = int(self.interval * self.ease_factor)
+                self.ease_factor = min(2.5, self.ease_factor + 0.1)
 
-
-# ======================================================
-# DECK CLASS
-# ======================================================
 class Deck:
-    """
-    Represents a collection of flashcards.
-    Provides methods to:
-      - add/remove/search cards
-      - sort cards (QuickSort)
-      - JSON save/load
-      - track score
-    """
-
     def __init__(self, name):
         self.name = name
-        self.cards = []      # list of Flashcard objects
-        self.score = 0       # total score from user ratings
+        self.cards = []
+        self.score = 0
 
-    # --------------------------------------------------
-    # ADD A FLASHCARD
-    # QuickSort is applied here to maintain sorted order
-    # --------------------------------------------------
     def add_card(self, card: Flashcard):
         self.cards.append(card)
 
-    # --------------------------------------------------
-    # REMOVE A FLASHCARD BY ID
-    # --------------------------------------------------
     def remove_card(self, card_id):
         card = self.get_card(card_id)
         if card:
@@ -85,12 +59,8 @@ class Deck:
             return True
         return False
 
-    # --------------------------------------------------
-    # FIND A CARD BY ID USING BINARY SEARCH
-    # Precondition: self.cards is sorted by id
-    # --------------------------------------------------
     def get_card(self, card_id):
-        # Binary search implementation
+        # Binary search 
         low = 0
         high = len(self.cards) - 1
 
@@ -106,16 +76,12 @@ class Deck:
                 high = mid - 1
         return None
 
-    # --------------------------------------------------
-    # SORT CARDS BY ID (for binary search)
-    # QuickSort applied here
-    # --------------------------------------------------
     def sort_by_id(self):
         self.cards = self._quicksort(self.cards, key=lambda c: c.id)
 
-    # --------------------------------------------------
-    # QUICK SORT IMPLEMENTATION
-    # --------------------------------------------------
+    def sort_by_score(self):
+        self.cards.sort(key=lambda c: (c.last_score, c.created_at))
+
     @staticmethod
     def _quicksort(cards, key):
         if len(cards) <= 1:
@@ -126,25 +92,12 @@ class Deck:
         right = [c for c in cards if key(c) > pivot]
         return Deck._quicksort(left, key) + mid + Deck._quicksort(right, key)
 
-    # --------------------------------------------------
-    # RATE CARD (apply rating & update score)
-    # --------------------------------------------------
     def rate_card(self, card: Flashcard, rating):
-        """
-        Applies a rating to a card and updates the deck score.
-        Easy = 2 points, Hard = 1 point, Again = 0 points
-        """
         card.apply_rating(rating)
 
-        if rating == 2:
-            self.score += 2
-        elif rating == 1:
-            self.score += 1
-        # Again (0) adds 0 points
+        self.score += rating
+        self.sort_by_score()
 
-    # --------------------------------------------------
-    # HIGHEST POSSIBLE SCORE
-    # --------------------------------------------------
     def max_score(self):
         """
         Returns the highest possible score for this deck,
@@ -184,12 +137,10 @@ class Deck:
                 card.repetitions = card_data["repetitions"]
                 card.interval = card_data["interval"]
                 card.ease_factor = card_data["ease_factor"]
+                card.last_score = card_data.get("last_score", 0)
                 deck.cards.append(card)
             return deck
 
-    # --------------------------------------------------
-    # HELPER TO CONVERT CARD TO DICT FOR JSON
-    # --------------------------------------------------
     @staticmethod
     def _card_to_dict(card: Flashcard):
         return {
@@ -198,16 +149,10 @@ class Deck:
             "back": card.back,
             "repetitions": card.repetitions,
             "interval": card.interval,
-            "ease_factor": card.ease_factor
+            "ease_factor": card.ease_factor,
+            "last_score": getattr(card, "last_score", 0)
         }
 
 
-# ======================================================
-# HELPER FUNCTION TO CREATE A NEW CARD
-# ======================================================
 def create_card(front, back):
-    """
-    Helper to create a new Flashcard object
-    with default SM-2 values.
-    """
     return Flashcard(front, back)
