@@ -90,7 +90,7 @@ class FlashcardApp:
                     row=0, column=0, padx=5, pady=3, sticky="w")
                 ttk.Label(self.deck_rows_frame, text="Cards", font=("Arial", 13, "bold")).grid(
                     row=0, column=1, padx=5, pady=3)
-                ttk.Label(self.deck_rows_frame, text="Last Score", font=("Arial", 13, "bold")).grid(
+                ttk.Label(self.deck_rows_frame, text="Score", font=("Arial", 13, "bold")).grid(
                     row=0, column=2, padx=5, pady=3)
                 ttk.Label(self.deck_rows_frame, text="Actions", font=("Arial", 13, "bold")).grid(
                     row=0, column=3, padx=5, pady=3)
@@ -124,28 +124,20 @@ class FlashcardApp:
             self._add_deck_to_table(deck, i + 1)
 
     def _add_deck_to_table(self, deck, row_index):
-        '''
-        Loads each deck into the main menu table
-        '''
+        # Loads each deck into the main menu table
         ttk.Label(self.deck_rows_frame, text=deck.name).grid(
                 row=row_index, column=0, padx=5, pady=2, sticky="w")
         
-        '''
-        Shows number of cards in the deck
-        '''
+        # Shows number of cards in the deck
         card_count = ttk.Label(self.deck_rows_frame, text=len(deck.cards))
         card_count.grid(row=row_index, column=1, padx=5, pady=2)
         deck._card_count = card_count
 
-        '''
-        Shows the deck's previous score
-        '''
+        # Shows the deck's previous score
         prev_score = ttk.Label(self.deck_rows_frame, text=deck.score)
         prev_score.grid(row=row_index, column=2, padx=5, pady=2)
     
-        '''
-        Action buttons
-        '''
+        # Shows action buttons
         button_frame = ttk.Frame(self.deck_rows_frame)
         button_frame.grid(row=row_index, column=3, padx=10, pady=2)
         
@@ -161,9 +153,7 @@ class FlashcardApp:
             messagebox.showerror("Error", "You need to create a deck before adding cards!")
             return
         
-        '''
-        General window setup
-        '''
+        # General window setup
         self.create_card_window = tk.Toplevel(self.main_window)
         self.create_card_window.title("Create Card")
 
@@ -174,9 +164,7 @@ class FlashcardApp:
         main_frame = ttk.Frame(self.create_card_window, padding="20")
         main_frame.pack(anchor="center", expand=True)
 
-        '''
-        Allows user to pick a deck to add the card to
-        '''
+        # Dropdown to select deck
         option_frame = ttk.Frame(main_frame)
         option_frame.grid(row=0, column=0, sticky="w", pady=(0,15))
 
@@ -189,9 +177,7 @@ class FlashcardApp:
         deck_menu = ttk.OptionMenu(option_frame, self.deck_entry, options[0], *options)
         deck_menu.grid(row=0, column=1, padx=(0,10))
 
-        '''
-        Allows user to customize front and back parts of card
-        '''
+        # Allows user to customize front and back parts of card
         ttk.Label(main_frame, text="Front", font=("Arial", 14, "bold")).grid(
             row=1, column=0, sticky="w", padx=(0,5), pady=(0,5))
 
@@ -239,86 +225,81 @@ class FlashcardApp:
         if not deck.cards:
             messagebox.showerror("Error", "This deck has no cards to study!")
             return
-        
+
         self.study_cards = list(deck.cards)
         self.study_cards_index = 0
         self.current_deck = deck
         self.showing_front = True
-        
+
         self.study_deck_window = tk.Toplevel(self.main_window)
         self.study_deck_window.title(f"{deck.name}")
-        
         self.study_deck_window.withdraw()
         self.center_window(self.study_deck_window, 500, 400)
         self.study_deck_window.deiconify()
 
-        # Frame for card front 
-        self.card_text = ttk.Label(self.study_deck_window, 
-                                   text="", font=("Arial", 16), wraplength=450)
+        self.card_text = ttk.Label(
+            self.study_deck_window, text="", font=("Arial", 16), wraplength=450
+        )
         self.card_text.pack(pady=30)
 
-        # Frame for card back
-        self.card_answer = ttk.Label(self.study_deck_window, 
-                                   text="", font=("Arial", 16), wraplength=450)
+        self.card_answer = ttk.Label(
+            self.study_deck_window, text="", font=("Arial", 16), wraplength=450
+        )
 
-        # Frame for rating buttons
+        self.show_answer_button = ttk.Button(
+            self.study_deck_window, text="Show Answer", command=self.show_card_back
+        )
+        self.show_answer_button.pack(pady=10)
+
         self.rating_frame = ttk.Frame(self.study_deck_window)
         for i, text in enumerate(["Again", "Okay", "Good"]):
-            ttk.Button(self.rating_frame, text=text, 
-                    command=lambda rating=i: self.rate_card(rating)).pack(side="left", padx=5)
+            btn = ttk.Button(self.rating_frame, text=text)
+            btn.config(command=lambda rating=i: self.rate_card(rating))
+            btn.pack(side="left", padx=5)
 
-        # Show first card front in deck
         self.show_card_front()
 
-        # When clicking space, it reveals the answer
-        self.study_deck_window.unbind("<space>")
-        self.study_deck_window.bind("<space>", self.on_space)
-
-    def on_space(self, event):
-        if self.study_cards_index >= len(self.study_cards):
-            return
-        
-        if self.showing_front:
-            self.show_card_back()
-        else:
-            return
 
     def show_card_front(self):
-        if not (0 <= self.study_cards_index < len(self.study_cards)):
+        if self.study_cards_index >= len(self.study_cards):
             return
-    
+
         card = self.study_cards[self.study_cards_index]
         self.card_text.config(text=card.front)
 
         self.card_answer.pack_forget()
         self.rating_frame.pack_forget()
 
+        self.show_answer_button.pack(pady=5)
+
         self.card_answer.config(text="")
-        
         self.showing_front = True
 
+
     def show_card_back(self):
-        if not (0 <= self.study_cards_index < len(self.study_cards)):
+        if self.study_cards_index >= len(self.study_cards):
             return
-    
+
         card = self.study_cards[self.study_cards_index]
         self.card_answer.config(text=card.back)
+
+        self.study_deck_window.update_idletasks()
+
         self.card_answer.pack(pady=30)
         self.rating_frame.pack(pady=30)
 
+        self.show_answer_button.pack_forget()
+
         self.showing_front = False
 
+
     def rate_card(self, rating):
-        if not (0 <= self.study_cards_index < len(self.study_cards)):
+        if self.study_cards_index >= len(self.study_cards):
             return
-    
+
         card = self.study_cards[self.study_cards_index]
 
-        if hasattr(self.current_deck, "rate_card"):
-            self.current_deck.rate_card(card, rating)
-        else:
-            card.rating = rating
-            self.current_deck.score += (1 if rating >= 2 else 0)
+        self.current_deck.rate_card(card, rating)
 
         self.study_cards_index += 1
 
@@ -327,26 +308,17 @@ class FlashcardApp:
         else:
             self.finish_study()
 
+
     def finish_study(self):
         self.card_answer.pack_forget()
         self.rating_frame.pack_forget()
-
-        self.study_deck_window.unbind("<space>")
+        self.show_answer_button.pack_forget()
 
         self.card_text.config(text="Congratulations!")
-        self.card_answer.config(text=f"Score: {getattr(self.current_deck, 'score', 0)}")
+        self.card_answer.config(text=f"Your score for this deck is {self.current_deck.score}!")
         self.card_answer.pack(pady=10)
 
         self.showing_front = False
-
-        try:
-            self.study_deck_window.unbind("<space>")
-        except Exception:
-            pass
-
-    def close_study_window(self):
-        self.study_deck_window.unbind("<space>")
-        self.study_deck_window.destroy()
 
     def edit_deck(self, deck):
         # TODO

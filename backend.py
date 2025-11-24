@@ -14,17 +14,17 @@ class Flashcard:
       - SM-2 values (interval, ease_factor, repetitions)
     """
 
-    def __init__(self, front, back, card_id=None):
+    def __init__(self, front, back, card_id=None, created_at=None):
         self.id = card_id or str(uuid.uuid4())  # unique ID
         self.front = front
         self.back = back
         self.repetitions = 0      # number of consecutive successful reviews
         self.interval = 1         # review interval (logical, not date-based)
         self.ease_factor = 2.5    # SM-2 ease factor
+        self.created_at = created_at or uuid.uuid4().int
 
     def apply_rating(self, rating):
         """
-        Update this card using simplified SM-2 algorithm.
         Ratings:
             0 = Again
             1 = Hard
@@ -74,7 +74,6 @@ class Deck:
     # --------------------------------------------------
     def add_card(self, card: Flashcard):
         self.cards.append(card)
-        self.sort_by_id()  # maintain sorted order for binary search
 
     # --------------------------------------------------
     # REMOVE A FLASHCARD BY ID
