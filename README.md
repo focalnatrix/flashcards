@@ -6,4 +6,4 @@ Introducing Memokado, a flashcard program that prioritizes the information you k
 - Create flashcard decks 
 - Create cards with front and back sides
 - Save and load decks as JSON files
-- Rate cards according to
+- Rate cards according to how well you remembered them
